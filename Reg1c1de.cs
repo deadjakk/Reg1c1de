@@ -12,13 +12,75 @@ namespace Reg1c1de
             static string outfile = "";
             static bool debug = false;
             static bool performwritetest = false;
+            static bool filefinder_opt = true;
             static List<string> fails = new List<string>();
             static List<string> vulnerable = new List<string>();
             static List<string> unsuccessfuls = new List<string>();
+            static List<string> writeablefiles = new List<string>();
             static string basekey = "Software";
             static string uniquestring = "sn0wflake_str1ng_";
             static RegistryKey hive = Registry.LocalMachine;
             static bool entirehive;
+
+            static string[] extensions = { 
+            ".dll",".exe",".wll",".inf",".ini"
+            };
+
+            static bool hasext(string fname)
+            {
+                foreach(string ext in extensions)
+                {
+                    if (fname.Contains(ext))
+                    {
+                        return true;
+                    }
+                }
+                return false;
+            }
+
+            static bool doihavewrite(string filename)
+            {
+                try
+                {
+                    if (!System.IO.File.Exists(filename)){
+                        return false;
+                    }
+                    System.IO.File.OpenWrite(filename);
+                    return true;
+                } catch (System.UnauthorizedAccessException){
+                    return false;
+                } catch 
+                {
+                    // in case 
+                    return false;
+                }
+            }
+
+            static void filefinder(string[] filenames,string keyname)
+            {
+
+               foreach(string fname in filenames)
+                {
+                    if (hasext(fname))
+                    {
+                        if (doihavewrite(fname))
+                        {
+                            Console.WriteLine("[+]Writeable File: {0} with associated key: {1}", fname,keyname);
+                            if (!writeablefiles.Contains(fname + "|" + keyname))
+                            {
+                                writeablefiles.Add(fname + "|" + keyname);
+                            }
+                            
+
+                        }
+
+                    }
+
+
+
+                } 
+
+            }
 
             static void printusage()
             {
@@ -31,6 +93,7 @@ namespace Reg1c1de
                     "-e \tscan the entire specified hive, this is disabled by default\n" +
                     "-o \tfilename to write the vulnerable keys to csv, example -o=filename\n" +
                     "-k \tbase key to enumerate from under the hive, default=Software, example -k=Software\n" +
+                    "-df\tdisables writeable file checking, in case you don't want to make thousands of access denied file open attempts\n" +
                     "-r \tfour letter shorthand of the root hive to enumerate from, default=HKLM, example -r=HKLM\n" +
                     "\tAcceptable values are: HKCU, HKLM, HKCR, HKCC, HKU\n\n"+
                     "-writetests\tenabling this flag will enable write tests, which will write a dummy registry key and value to every discovered " +
@@ -96,6 +159,12 @@ namespace Reg1c1de
                 using (System.IO.StreamWriter writer = new System.IO.StreamWriter(outfile+"_"+hive.Name+".csv"))
                 {
                     writer.WriteLine("result,keyname");
+                    foreach (string wfile in writeablefiles)
+                    {
+                        if (filefinder_opt) { 
+                            writer.WriteLine("WRITEABLEFILE," + wfile);
+                        }
+                    }
                     foreach (string vuln in vulnerable)
                     {
                         writer.WriteLine("VULNERABLE," + vuln);
@@ -123,13 +192,18 @@ namespace Reg1c1de
                     }
                     else if (arg == "-vv" || arg == "-v")
                     {
-                        Console.WriteLine("output set to debug");
+                        Console.WriteLine("[+]config: output set to debug");
                         debug = true;
                     }
                     else if (arg == "-e")
                     {
-                        Console.WriteLine("will scan the entire hive");
+                        Console.WriteLine("[+]config: scanning entire hive");
                         entirehive = true;
+                    }
+                    else if (arg == "-df")
+                    {
+                        Console.WriteLine("[+]config: disabled file path checking");
+                        filefinder_opt = false;
                     }
                     else if (arg.Contains("-o"))
                     {
@@ -300,6 +374,21 @@ namespace Reg1c1de
             }
             static void checkrights(RegistryKey pkey, string subkey)
             {
+                if (filefinder_opt)
+                {
+                    RegistryKey tempKey = pkey.OpenSubKey(subkey, false);
+                    List<string> tList = new List<string>();
+                    foreach(string vname in tempKey.GetValueNames())
+                    {
+                        tList.Add(tempKey.GetValue(vname).ToString());
+                    }
+
+                    string[] alist = tList.ToArray();
+                    filefinder(alist,pkey.Name + "\\" + subkey);
+                    tempKey.Dispose();
+
+                }
+
                 if (subkey.Contains(uniquestring))
                 {
                     return;
