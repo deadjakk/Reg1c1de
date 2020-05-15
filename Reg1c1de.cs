@@ -70,7 +70,6 @@ namespace Reg1c1de
                             {
                                 writeablefiles.Add(fname + "|" + keyname);
                             }
-                            
 
                         }
 
@@ -85,7 +84,8 @@ namespace Reg1c1de
             static void printusage()
             {
                 Console.WriteLine("Description:\n" +
-                    "Reg1c1de is a tool that scans the HKLM hive and reports on any keys where the user has write permissions\n" +
+                    "Reg1c1de is a tool that scans specified registry hives and reports on any keys where the user has write permissions\n" +
+                    "In addition, if any registry values are found that contain file paths with certain file extensions and they are writeable, these will be reported as well.\n" +
                     "These keys should be investigated further as they could potentially lead to a path to privilege escalation or other evil\n");
                 Console.WriteLine("Arguments: (THESE ARE ALL OPTIONAL!)\n" +
                     "-h \tshow this help message\n" +
